@@ -1,0 +1,39 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      CHECKHUB_DATABASE_URL: postgresql+asyncpg://checkhub:checkhub@db:5432/checkhub
+      CHECKHUB_REDIS_URL: redis://redis:6379/0
+      CHECKHUB_API_KEYS: '["dev-key"]'
+      # Сервис обращается к встроенным заглушкам поставщиков у самого себя.
+      CHECKHUB_PROVIDERS_BASE_URL: http://localhost:8000/mock
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: checkhub
+      POSTGRES_PASSWORD: checkhub
+      POSTGRES_DB: checkhub
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U checkhub"]
+      interval: 2s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      retries: 15
+
+volumes:
+  pgdata:
